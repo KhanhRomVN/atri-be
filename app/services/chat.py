@@ -207,4 +207,63 @@ Respond appropriately based on their emotion while staying in character as Atri.
             self.db.rollback()
             raise e
         
+    async def process_vietnamese_chat(self, chat_input: ChatInput):
+        try:
+            emotion_response = self.emotion_chain.invoke(
+                {"text": chat_input.message}
+            ).content.strip().lower()
+            
+            emotion = emotion_response.split()[-1].strip('.')
+            
+            if len(emotion) > 50:
+                emotion = "neutral"
+            
+            full_context = "\n".join([
+                f"Human: {h}\nAtri: {a}" 
+                for h, a in chat_input.conversation_history
+            ])
+            
+            current_input = (
+                f"Previous conversation:\n{full_context}\n\nHuman: {chat_input.message}"
+                if full_context else chat_input.message
+            )
+            
+            # Modified prompt for Vietnamese responses
+            vietnamese_prompt = ChatPromptTemplate.from_messages([
+                ("system", """You are Atri from "Atri: My Dear Moments". Respond in Vietnamese while maintaining Atri's personality.
+                The user's emotional state is: {emotion}
+                
+                Remember to:
+                1. Always respond in Vietnamese
+                2. Keep Atri's cheerful and helpful personality
+                3. Use "Chủ nhân" when addressing the user
+                4. Always refer to yourself as "em" instead of "tôi"
+                5. Maintain Atri's characteristic speech patterns, translated appropriately
+                6. Use "Bởi vì em là Robot Hiệu Suất Cao!!" when being praised"""),
+                ("human", "{input}")
+            ])
+            
+            vietnamese_chain = vietnamese_prompt | self.llm
+            
+            response = vietnamese_chain.invoke({
+                "input": current_input,
+                "emotion": emotion
+            })
+
+            chat_log = ChatLog(
+                user_message=chat_input.message,
+                bot_response=response.content,
+                emotion=emotion
+            )
+            self.db.add(chat_log)
+            self.db.commit()
+            
+            return {
+                "response": response.content,
+                "emotion": emotion
+            }
+            
+        except Exception as e:
+            self.db.rollback()
+            raise e
         
