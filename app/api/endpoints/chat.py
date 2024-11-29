@@ -10,10 +10,15 @@ import os
 
 router = APIRouter()
 
-@router.post("/chat", response_model=ChatResponse)
+@router.post("/english/chat", response_model=ChatResponse)
 async def chat(chat_input: ChatInput, db: Session = Depends(get_db)):
     chat_service = ChatService(db)
     return await chat_service.process_chat(chat_input)
+
+# @router.post("/vietnamese/chat", response_model=ChatResponse)
+# async def chat_vietnamese(chat_input: ChatInput, db: Session = Depends(get_db)):
+#     chat_service = ChatService(db)
+#     return await chat_service.process_vietnamese_chat(chat_input)
 
 @router.get("/chat-history", response_model=List[ChatLog])
 async def get_chat_history(
